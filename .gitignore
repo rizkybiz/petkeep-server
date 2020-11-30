@@ -1,0 +1,5 @@
+certs
+node*
+petkeep-server
+*.env
+cockroach*

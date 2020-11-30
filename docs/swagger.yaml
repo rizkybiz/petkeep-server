@@ -1,0 +1,256 @@
+basePath: /api/v1
+definitions:
+  api.emptyBody:
+    type: object
+  api.pet:
+    properties:
+      birthday:
+        example: "2019-11-09T21:21:46+00:00"
+        type: string
+      breed:
+        example: Lab/Terrier Mix
+        type: string
+      created_at:
+        example: "2019-11-09T21:21:46+00:00"
+        type: string
+      name:
+        example: Fido
+        type: string
+      pet_id:
+        type: integer
+      type:
+        example: Dog
+        type: string
+      updated_at:
+        example: "2019-11-09T21:21:46+00:00"
+        type: string
+      user_id:
+        type: integer
+    type: object
+  api.petRequest:
+    properties:
+      birthday:
+        example: "2019-11-09T21:21:46+00:00"
+        type: string
+      breed:
+        example: Lab/Terrier Mix
+        type: string
+      name:
+        example: Fido
+        type: string
+      type:
+        example: Dog
+        type: string
+    type: object
+  api.token:
+    properties:
+      access_token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+        type: string
+      refresh_token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+        type: string
+    type: object
+  api.userRequest:
+    properties:
+      email:
+        example: john.doe@email.com
+        type: string
+      password:
+        example: passw0rd
+        type: string
+    type: object
+  api.userResponse:
+    properties:
+      created_at:
+        example: "2019-11-09T21:21:46+00:00"
+        type: string
+      email:
+        example: john.doe@email.com
+        type: string
+      last_login:
+        example: "2019-11-09T21:21:46+00:00"
+        type: string
+      updated_at:
+        example: "2019-11-09T21:21:46+00:00"
+        type: string
+      user_id:
+        example: 1
+        type: integer
+    type: object
+host: localhost:8090
+info:
+  contact: {}
+  description: This is the API behind Petkeep
+  title: Petkeep API
+  version: "1.0"
+paths:
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Login a user
+      parameters:
+      - description: Login User
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/api.userRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.token'
+      summary: Login a user
+  /pets:
+    get:
+      description: Get all pets
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.pet'
+            type: array
+      security:
+      - ApiKeyAuth: []
+      summary: Get all pets
+      tags:
+      - Pets
+    post:
+      consumes:
+      - application/json
+      description: Create a pet
+      parameters:
+      - description: Create Pet
+        in: body
+        name: pet
+        required: true
+        schema:
+          $ref: '#/definitions/api.petRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.pet'
+      security:
+      - ApiKeyAuth: []
+      summary: Create a pet
+      tags:
+      - Pets
+  /pets/{PetID}:
+    delete:
+      description: Delete a pet
+      parameters:
+      - description: Deleted Pet
+        in: path
+        name: PetID
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.emptyBody'
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a pet
+      tags:
+      - Pets
+    get:
+      description: Get one pet
+      parameters:
+      - description: Get Pet
+        in: path
+        name: PetID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.pet'
+      security:
+      - ApiKeyAuth: []
+      summary: Get one pet
+      tags:
+      - Pets
+    put:
+      consumes:
+      - application/json
+      description: Update a pet
+      parameters:
+      - description: Pet ID
+        in: path
+        name: PetID
+        required: true
+        type: integer
+      - description: Updated Pet
+        in: body
+        name: pet
+        required: true
+        schema:
+          $ref: '#/definitions/api.pet'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.pet'
+      security:
+      - ApiKeyAuth: []
+      summary: Update a pet
+      tags:
+      - Pets
+  /users:
+    get:
+      description: Get a user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.userResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get a user
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      description: Create a user
+      parameters:
+      - description: Create User
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/api.userRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.userResponse'
+      summary: Create a user
+      tags:
+      - Users
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -32,7 +31,7 @@ func (s *server) respond(w http.ResponseWriter, r *http.Request, data interface{
 	if data != nil {
 		err := json.NewEncoder(w).Encode(data)
 		if err != nil {
-			log.Printf("Error encoding data: %s", err)
+			s.logger.Error().Err(err).Msg("error encoding data")
 			return
 		}
 	}
@@ -100,6 +99,25 @@ func (s *server) decode(w http.ResponseWriter, r *http.Request, v interface{}) e
 	return nil
 }
 
+//userIDFromRequest is a helper to extract UserID from the HTTP Request context
+func userIDFromRequest(r *http.Request) (int64, error) {
+	id := context.Get(r, "userID")
+	idStr := fmt.Sprintf("%v", id)
+	idInt, err := strconv.Atoi(idStr)
+	if err != nil {
+		return 0, err
+	}
+	return int64(idInt), nil
+}
+
+// handlerLogin godoc
+// @Summary Login a user
+// @Description Login a user
+// @Accept json
+// @Produce json
+// @Param user body userRequest true "Login User"
+// @Success 200 {object} token
+// @Router /login [post]
 func (s *server) handlerLogin() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -107,7 +125,7 @@ func (s *server) handlerLogin() http.HandlerFunc {
 		var usr user
 		err := s.decode(w, r, &usr)
 		if err != nil {
-			log.Printf("error: %s", err)
+			s.logger.Error().Err(err).Msg("error decoding")
 			return
 		}
 
@@ -120,7 +138,7 @@ func (s *server) handlerLogin() http.HandlerFunc {
 		// Check DB for user and compare passwords
 		id, err := s.dbLogin(usr.Email, usr.Password)
 		if err != nil {
-			log.Println(err)
+			s.logger.Error().Err(err).Msg("error retrieving user from database")
 			s.respond(w, r, nil, "incorrect password", http.StatusUnauthorized)
 			return
 		}
@@ -128,14 +146,14 @@ func (s *server) handlerLogin() http.HandlerFunc {
 		// Generate access token
 		accTokenStr, err := generateToken(uint(id), time.Now().Add(time.Hour*24))
 		if err != nil {
-			log.Println(err)
+			s.logger.Error().Err(err).Msg("error generating access token")
 			s.respond(w, r, nil, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		// Generate refresh token
 		refrTokenStr, err := generateToken(uint(id), time.Now().Add(time.Hour*168))
 		if err != nil {
-			log.Println(err)
+			s.logger.Error().Err(err).Msg("error generating refresh token")
 			s.respond(w, r, nil, "internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -144,13 +162,22 @@ func (s *server) handlerLogin() http.HandlerFunc {
 	}
 }
 
+// handlerUsersCreate godoc
+// @Summary Create a user
+// @Description Create a user
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param user body userRequest true "Create User"
+// @Success 200 {object} userResponse
+// @Router /users [post]
 func (s *server) handlerUsersCreate() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ts := time.Now()
 		var usr user
 		err := s.decode(w, r, &usr)
 		if err != nil {
-			log.Println(err)
+			s.logger.Error().Err(err).Msg("error decoding JSON")
 			return
 		}
 
@@ -163,7 +190,7 @@ func (s *server) handlerUsersCreate() http.HandlerFunc {
 		// Validate the email address
 		err = checkmail.ValidateFormat(usr.Email)
 		if err != nil {
-			log.Println(err)
+			s.logger.Error().Err(err).Msg("error validating email")
 			s.respond(w, r, nil, "email format is invalid", http.StatusBadRequest)
 			return
 		}
@@ -171,7 +198,7 @@ func (s *server) handlerUsersCreate() http.HandlerFunc {
 		//Create hashed version of password
 		hashedPass, err := bcrypt.GenerateFromPassword([]byte(usr.Password), bcrypt.DefaultCost)
 		if err != nil {
-			log.Println(err)
+			s.logger.Error().Err(err).Msg("error hashing password")
 			s.respond(w, r, nil, "internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -182,30 +209,45 @@ func (s *server) handlerUsersCreate() http.HandlerFunc {
 		usr.UpdatedAt = ts
 
 		//Create the user in the DB
-		id, err := s.dbUsersCreate(usr)
+		_, err = s.dbUsersCreate(usr)
 		if err != nil {
-			log.Println(err)
-			s.respond(w, r, nil, "error creating user", http.StatusInternalServerError)
+			s.logger.Error().Err(err).Msg("error creating user in database")
+			s.respond(w, r, nil, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		// Set the users ID and return
-		usr.ID = uint(id)
-		s.respond(w, r, usr, "", http.StatusCreated)
+		// Return userResponse
+		usrResp := userResponse{
+			Email:     usr.Email,
+			CreatedAt: ts,
+			UpdatedAt: ts,
+		}
+		s.respond(w, r, usrResp, "", http.StatusCreated)
 	}
 }
 
+// handlerUsersGetOne godoc
+// @Summary Get a user
+// @Description Get a user
+// @Tags Users
+// @Produce json
+// @Success 200 {object} userResponse
+// @Security ApiKeyAuth
+// @Router /users [get]
 func (s *server) handlerUsersGetOne() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		// Get user ID from the authenticated context
-		id := context.Get(r, "userID")
-		idStr := fmt.Sprintf("%v", id)
-		idInt, _ := strconv.Atoi(idStr)
+		id, err := userIDFromRequest(r)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("error retrieving user ID from context")
+			s.respond(w, r, nil, "error retrieving user", http.StatusUnauthorized)
+		}
 
 		// Get user from database and respond
-		u, err := s.dbUsersGetOne(int64(idInt))
+		u, err := s.dbUsersGetOne(int64(id))
 		if err != nil {
+			s.logger.Error().Err(err).Msg("error retrieving user from database")
 			s.respond(w, r, nil, err.Error(), http.StatusInternalServerError)
 		}
 		s.respond(w, r, u, "", http.StatusOK)
@@ -223,54 +265,205 @@ func (s *server) handlerResetPassword() http.HandlerFunc {
 	}
 }
 
+// handlerPetsGetAll godoc
+// @Summary Get all pets
+// @Description Get all pets
+// @Tags Pets
+// @Produce json
+// @Success 200 {array} pet
+// @Security ApiKeyAuth
+// @Router /pets [get]
 func (s *server) handlerPetsGetAll() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		// Get user ID from the authenticated context
-		id := context.Get(r, "userID")
-		idStr := fmt.Sprintf("%v", id)
-		idInt, _ := strconv.Atoi(idStr)
+		id, err := userIDFromRequest(r)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("error retrieving user ID from context")
+			s.respond(w, r, nil, "error retrieving pets", http.StatusUnauthorized)
+		}
 
 		// Get pets from the database and respond
-		pets, err := s.dbPetsGetAll(int64(idInt))
+		pets, err := s.dbPetsGetAll(int64(id))
 		if err != nil {
+			s.logger.Error().Err(err).Msg("error retrieving pets from database")
 			s.respond(w, r, nil, err.Error(), http.StatusInternalServerError)
 		}
 		s.respond(w, r, pets, "", http.StatusOK)
 	}
 }
 
+// handlerPetsGetOne godoc
+// @Summary Get one pet
+// @Description Get one pet
+// @Tags Pets
+// @Produce json
+// @Param PetID path int true "Get Pet"
+// @Success 200 {object} pet
+// @Security ApiKeyAuth
+// @Router /pets/{PetID} [get]
 func (s *server) handlerPetsGetOne() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		// Get user ID from the authenticated context
-		id := context.Get(r, "userID")
-		idStr := fmt.Sprintf("%v", id)
-		idInt, _ := strconv.Atoi(idStr)
+		id, err := userIDFromRequest(r)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("error retrieving user ID from context")
+			s.respond(w, r, nil, "error retrieving pet", http.StatusUnauthorized)
+		}
 
 		// Get URL params
 		params := mux.Vars(r)
-		id := params["id"]
-		if id == "" {
+		petIDStr := params["id"]
+		if petIDStr == "" {
 			s.respond(w, r, nil, "must provide a pet id", http.StatusBadRequest)
 		}
+		petIDInt, _ := strconv.Atoi(petIDStr)
+
+		// Get pet from db
+		pet, err := s.dbPetsGetOne(id, int64(petIDInt))
+		if err != nil {
+			s.logger.Error().Err(err).Msg("error retrieving pet from database")
+			s.respond(w, r, nil, err.Error(), http.StatusInternalServerError)
+		}
+		// Respond with pet record
+		s.respond(w, r, pet, "", http.StatusOK)
 	}
 }
 
+// handlerPetsCreate godoc
+// @Summary Create a pet
+// @Description Create a pet
+// @Tags Pets
+// @Accept json
+// @Produce json
+// @Param pet body petRequest true "Create Pet"
+// @Success 200 {object} pet
+// @Security ApiKeyAuth
+// @Router /pets [post]
 func (s *server) handlerPetsCreate() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		ts := time.Now()
+
+		// Get user ID from the authenticated context
+		userID, err := userIDFromRequest(r)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("error retrieving user ID from context")
+			s.respond(w, r, nil, "error creating pet", http.StatusUnauthorized)
+		}
+
+		var pet pet
+
+		// Get JSON body and decode into a pet
+		err = s.decode(w, r, &pet)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("error decoding JSON")
+		}
+		pet.CreatedAt = ts
+		pet.UpdatedAt = ts
+
+		// Create pet in the db
+		id, err := s.dbPetsCreate(pet, userID)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("error creating pet in databse")
+			s.respond(w, r, nil, "error creating pet", http.StatusInternalServerError)
+			return
+		}
+
+		// Set ID's and respond
+		pet.UserID = uint(userID)
+		pet.ID = uint(id)
+		s.respond(w, r, pet, "", http.StatusCreated)
 	}
 }
 
+// handlerPetsUpdate godoc
+// @Summary Update a pet
+// @Description Update a pet
+// @Tags Pets
+// @Accept json
+// @Produce json
+// @Param PetID path int true "Pet ID"
+// @Param pet body pet true "Updated Pet"
+// @Success 200 {object} pet
+// @Security ApiKeyAuth
+// @Router /pets/{PetID} [put]
 func (s *server) handlerPetsUpdate() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		ts := time.Now()
+
+		// Get user ID from the authenticated context
+		id, err := userIDFromRequest(r)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("error retrieving user ID from context")
+			s.respond(w, r, nil, "error retrieving user", http.StatusUnauthorized)
+		}
+
+		// Get URL params
+		params := mux.Vars(r)
+		petIDStr := params["id"]
+		if petIDStr == "" {
+			s.respond(w, r, nil, "must provide a pet id", http.StatusBadRequest)
+		}
+		petIDInt, _ := strconv.Atoi(petIDStr)
+
+		var pet pet
+
+		//Get JSON body and decode into pet
+		err = s.decode(w, r, pet)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("error decoding JSON")
+		}
+		pet.UpdatedAt = ts
+		pet.ID = uint(petIDInt)
+
+		//Update pet in the db
+		err = s.dbPetsUpdate(pet, id)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("error updating pet in databse")
+			s.respond(w, r, nil, "error updating pet", http.StatusInternalServerError)
+			return
+		}
+
+		//Respond with the updated pet record
+		s.respond(w, r, pet, "", http.StatusOK)
 	}
 }
 
+// handlerPetsDelete godoc
+// @Summary Delete a pet
+// @Description Delete a pet
+// @Tags Pets
+// @Param PetID path int true "Deleted Pet"
+// @Success 200 {object} emptyBody
+// @Security ApiKeyAuth
+// @Router /pets/{PetID} [delete]
 func (s *server) handlerPetsDelete() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		// Get user ID from the authenticated context
+		id, err := userIDFromRequest(r)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("error retrieving user ID from context")
+			s.respond(w, r, nil, "error retrieving user", http.StatusUnauthorized)
+		}
+
+		// Get URL params
+		params := mux.Vars(r)
+		petIDStr := params["id"]
+		if petIDStr == "" {
+			s.respond(w, r, nil, "must provide a pet id", http.StatusBadRequest)
+		}
+		petIDInt, _ := strconv.Atoi(petIDStr)
+
+		//Delete the pet from the db
+		rows, err := s.dbPetsDelete(int64(petIDInt), id)
+		if err != nil || rows == 0 {
+			s.respond(w, r, nil, "could not delete pet", http.StatusBadRequest)
+		}
+
+		s.respond(w, r, nil, "", http.StatusOK)
 	}
 }

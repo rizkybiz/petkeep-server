@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: petkeep-api-service
+spec:
+  selector:
+    app: petkeep
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cockroachdb
+spec:
+  type: ExternalName
+  externalName: cockroachdb-public.cockroachdb.svc.cluster.local
+  ports:
+  - port: 26257
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: broker
+spec:
+  type: ExternalName
+  externalName: circonus-broker-service.circonus-brokers.svc.cluster.local
+  ports:
+    - port: 8125
