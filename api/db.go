@@ -15,7 +15,7 @@ func (s *server) connectDB(host, port, user, certPath, database string, dbInsecu
 	if dbInsecure {
 		connString = fmt.Sprintf("postgresql://%s@%s:%s/%s?ssl=true&sslmode=disable", user, host, port, database)
 	} else {
-		connString = fmt.Sprintf("postgresql://%s@%s:%s/%s?ssl=true&sslmode=require&sslrootcert=certs/ca.crt&sslkey=certs/tls.key&sslcert=certs/tls.crt", user, host, port, database)
+		connString = fmt.Sprintf("postgresql://%s@%s:%s/%s?ssl=true&sslmode=require&sslrootcert=%s/ca.crt&sslkey=%s/client.%s.key&sslcert=%s/client.%s.crt", user, host, port, database, certPath, certPath, user, certPath, user)
 	}
 	s.logger.Debug().Msg(fmt.Sprintf("connection string: %s", connString))
 	conn, err := sql.Open("postgres", connString)
@@ -55,6 +55,7 @@ func migrateDB(db *sql.DB) error {
 			user_id int REFERENCES users (id) ON DELETE CASCADE,
 			name STRING NOT NULL,
 			type STRING,
+			gender STRING,
 			breed STRING,
 			birthday DATE,
 			created_at TIMESTAMPTZ,
@@ -138,7 +139,7 @@ func (s *server) dbPetsGetAll(id int64) ([]pet, error) {
 	// Iterate through results and append to a slice
 	for rows.Next() {
 		var pet pet
-		err := rows.Scan(&pet.ID, &pet.UserID, &pet.Name, &pet.Type, &pet.Breed, &pet.Birthday)
+		err := rows.Scan(&pet.ID, &pet.UserID, &pet.Name, &pet.Type, &pet.Breed, &pet.Birthday, &pet.CreatedAt, &pet.UpdatedAt, &pet.Gender)
 		if err != nil {
 			return nil, err
 		}
@@ -152,7 +153,7 @@ func (s *server) dbPetsGetOne(userID, petID int64) (p pet, e error) {
 
 	// Get pet from db
 	row := s.db.QueryRow("SELECT * FROM pets WHERE user_id =$1 AND id = $2", userID, petID)
-	err := row.Scan(&p.ID, &p.UserID, &p.Name, &p.Type, &p.Breed, &p.Birthday)
+	err := row.Scan(&p.ID, &p.UserID, &p.Name, &p.Type, &p.Gender, &p.Breed, &p.Birthday)
 	if err != nil {
 		return p, err
 	}
@@ -163,14 +164,14 @@ func (s *server) dbPetsGetOne(userID, petID int64) (p pet, e error) {
 func (s *server) dbPetsCreate(p pet, userID int64) (int64, error) {
 
 	//Insert pet into pets table
-	q, err := s.db.Prepare("INSERT INTO pets(user_id, name, type, breed, birthday, created_at, updated_at) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id")
+	q, err := s.db.Prepare("INSERT INTO pets(user_id, name, type, gender, breed, birthday, created_at, updated_at) VALUES($1,$2,$3,$4,$5,$6,$7, $8) RETURNING id")
 	if err != nil {
 		return 0, err
 	}
 	defer q.Close()
 
 	var id int64
-	err = q.QueryRow(userID, p.Name, p.Type, p.Breed, p.Birthday, p.CreatedAt, p.UpdatedAt).Scan(&id)
+	err = q.QueryRow(userID, p.Name, p.Type, p.Gender, p.Breed, p.Birthday, p.CreatedAt, p.UpdatedAt).Scan(&id)
 	if err != nil {
 		return 0, err
 	}
@@ -182,13 +183,13 @@ func (s *server) dbPetsCreate(p pet, userID int64) (int64, error) {
 func (s *server) dbPetsUpdate(p pet, userID int64) error {
 
 	//Update Pet
-	q, err := s.db.Prepare("UPDATE pets SET name = $1, type = $2, breed = $3, birthday = $4, updated_at = $5 WHERE id = $6")
+	q, err := s.db.Prepare("UPDATE pets SET name = $1, type = $2, gender = $3, breed = $4, birthday = $5, updated_at = $6 id = $7, created_at = $8, user_id = $9 WHERE id = $10")
 	if err != nil {
 		return err
 	}
 	defer q.Close()
 
-	_, err = q.Exec(p.Name, p.Type, p.Breed, p.Birthday, p.UpdatedAt, p.ID)
+	_, err = q.Exec(p.Name, p.Type, p.Gender, p.Breed, p.Birthday, p.UpdatedAt, p.ID, p.CreatedAt, p.UserID, p.ID)
 	if err != nil {
 		return err
 	}

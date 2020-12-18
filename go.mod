@@ -18,6 +18,7 @@ require (
 	github.com/namsral/flag v1.7.4-pre
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/olekukonko/tablewriter v0.0.5-0.20200416053754-163badb3bac6 // indirect
+	github.com/rs/cors v1.7.0
 	github.com/rs/zerolog v1.20.0
 	github.com/swaggo/http-swagger v0.0.0-20200308142732-58ac5e232fba
 	github.com/swaggo/swag v1.6.9

@@ -13,6 +13,9 @@ definitions:
       created_at:
         example: "2019-11-09T21:21:46+00:00"
         type: string
+      gender:
+        example: Female
+        type: string
       name:
         example: Fido
         type: string
@@ -34,6 +37,9 @@ definitions:
         type: string
       breed:
         example: Lab/Terrier Mix
+        type: string
+      gender:
+        example: Female
         type: string
       name:
         example: Fido
@@ -78,11 +84,11 @@ definitions:
         example: 1
         type: integer
     type: object
-host: localhost:8090
+host: 35.222.32.211:8080
 info:
   contact: {}
-  description: This is the API behind Petkeep
-  title: Petkeep API
+  description: This is the API behind Petkeeper
+  title: Petkeeper API
   version: "1.0"
 paths:
   /login:
@@ -241,8 +247,8 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           schema:
             $ref: '#/definitions/api.userResponse'
       summary: Create a user

@@ -169,7 +169,7 @@ func (s *server) handlerLogin() http.HandlerFunc {
 // @Accept json
 // @Produce json
 // @Param user body userRequest true "Create User"
-// @Success 200 {object} userResponse
+// @Success 201 {object} userResponse
 // @Router /users [post]
 func (s *server) handlerUsersCreate() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -209,7 +209,7 @@ func (s *server) handlerUsersCreate() http.HandlerFunc {
 		usr.UpdatedAt = ts
 
 		//Create the user in the DB
-		_, err = s.dbUsersCreate(usr)
+		id, err := s.dbUsersCreate(usr)
 		if err != nil {
 			s.logger.Error().Err(err).Msg("error creating user in database")
 			s.respond(w, r, nil, err.Error(), http.StatusInternalServerError)
@@ -218,6 +218,7 @@ func (s *server) handlerUsersCreate() http.HandlerFunc {
 
 		// Return userResponse
 		usrResp := userResponse{
+			ID:        uint(id),
 			Email:     usr.Email,
 			CreatedAt: ts,
 			UpdatedAt: ts,

@@ -8,8 +8,10 @@ import (
 	"os"
 	"os/signal"
 
+	// GorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rizkybiz/petkeep-server/config"
+	"github.com/rs/cors"
 	"github.com/rs/zerolog"
 	"gopkg.in/alexcesaro/statsd.v2"
 )
@@ -23,10 +25,11 @@ type server struct {
 	logger     zerolog.Logger
 	statsd     *statsd.Client
 	listenPort string
+	serverHost string
 }
 
-func newServer(listenPort string) *server {
-	s := &server{listenPort: listenPort}
+func newServer(serverHost, listenPort string) *server {
+	s := &server{serverHost: serverHost, listenPort: listenPort}
 	s.routes()
 	return s
 }
@@ -46,7 +49,7 @@ func StartServer(cfg config.Config) error {
 	jwtSigningKey = cfg.JWTSigningKey
 
 	// Create the server
-	srv := newServer(cfg.APIPort)
+	srv := newServer(cfg.ServerHost, cfg.APIPort)
 
 	// Initialize the logger
 	srv.logger = zerolog.New(os.Stdout).With().Timestamp().Logger()
@@ -66,9 +69,12 @@ func StartServer(cfg config.Config) error {
 		defer srv.statsd.Close()
 	}
 
+	// Set up CORS middleware
+	handler := cors.Default().Handler(srv)
+
 	// Start the server in the background
 	go func() {
-		srv.logger.Fatal().Err(http.ListenAndServe(fmt.Sprintf(":%s", cfg.APIPort), srv)).Msg("error handling tcp")
+		srv.logger.Fatal().Err(http.ListenAndServe(fmt.Sprintf(":%s", cfg.APIPort), handler)).Msg("error handling tcp")
 	}()
 
 	// Create channel of os.Signal and wait for a signal interrupt,

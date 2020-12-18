@@ -1,12 +1,12 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "This is the API behind Petkeep",
-        "title": "Petkeep API",
+        "description": "This is the API behind Petkeeper",
+        "title": "Petkeeper API",
         "contact": {},
         "version": "1.0"
     },
-    "host": "localhost:8090",
+    "host": "35.222.32.211:8080",
     "basePath": "/api/v1",
     "paths": {
         "/login": {
@@ -260,8 +260,8 @@
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "201": {
+                        "description": "Created",
                         "schema": {
                             "$ref": "#/definitions/api.userResponse"
                         }
@@ -288,6 +288,10 @@
                 "created_at": {
                     "type": "string",
                     "example": "2019-11-09T21:21:46+00:00"
+                },
+                "gender": {
+                    "type": "string",
+                    "example": "Female"
                 },
                 "name": {
                     "type": "string",
@@ -319,6 +323,10 @@
                 "breed": {
                     "type": "string",
                     "example": "Lab/Terrier Mix"
+                },
+                "gender": {
+                    "type": "string",
+                    "example": "Female"
                 },
                 "name": {
                     "type": "string",

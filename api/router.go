@@ -9,10 +9,10 @@ import (
 	HTTPSwagger "github.com/swaggo/http-swagger"
 )
 
-// @title Petkeep API
+// @title Petkeeper API
 // @version 1.0
-// @description This is the API behind Petkeep
-// @host localhost:8090
+// @description This is the API behind Petkeeper
+// @host 35.222.32.211:8080
 // @BasePath /api/v1
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
@@ -32,8 +32,8 @@ func (s *server) routes() {
 
 	// Set up the "no auth needed" paths
 	s.router.PathPrefix(staticDir).Handler(http.StripPrefix(staticDir, http.FileServer(http.Dir("."+staticDir))))
-	s.router.PathPrefix("/swagger/").Handler(HTTPSwagger.Handler(HTTPSwagger.URL(fmt.Sprintf("http://localhost:%s/docs/swagger.json", s.listenPort))))
-	s.router.Path("/api/" + version + "/login").Handler(s.handlerLogin()).Methods("POST")
+	s.router.PathPrefix("/swagger/").Handler(HTTPSwagger.Handler(HTTPSwagger.URL(fmt.Sprintf("http://%s:%s/docs/swagger.json", s.serverHost, s.listenPort))))
+	s.router.Path("/api/"+version+"/login").Handler(s.handlerLogin()).Methods("POST", "OPTIONS")
 	s.router.Path("/api/" + version + "/users").Handler(s.handlerUsersCreate()).Methods("POST")
 
 	// Set up the top level api subrouter

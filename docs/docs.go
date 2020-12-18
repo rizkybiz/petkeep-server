@@ -275,8 +275,8 @@ var doc = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "201": {
+                        "description": "Created",
                         "schema": {
                             "$ref": "#/definitions/api.userResponse"
                         }
@@ -303,6 +303,10 @@ var doc = `{
                 "created_at": {
                     "type": "string",
                     "example": "2019-11-09T21:21:46+00:00"
+                },
+                "gender": {
+                    "type": "string",
+                    "example": "Female"
                 },
                 "name": {
                     "type": "string",
@@ -334,6 +338,10 @@ var doc = `{
                 "breed": {
                     "type": "string",
                     "example": "Lab/Terrier Mix"
+                },
+                "gender": {
+                    "type": "string",
+                    "example": "Female"
                 },
                 "name": {
                     "type": "string",
@@ -418,11 +426,11 @@ type swaggerInfo struct {
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = swaggerInfo{
 	Version:     "1.0",
-	Host:        "localhost:8090",
+	Host:        "35.222.32.211:8080",
 	BasePath:    "/api/v1",
 	Schemes:     []string{},
-	Title:       "Petkeep API",
-	Description: "This is the API behind Petkeep",
+	Title:       "Petkeeper API",
+	Description: "This is the API behind Petkeeper",
 }
 
 type s struct{}

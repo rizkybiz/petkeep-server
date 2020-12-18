@@ -37,6 +37,7 @@ type pet struct {
 	UserID    uint      `json:"user_id"`
 	Name      string    `json:"name" example:"Fido"`
 	Type      string    `json:"type" example:"Dog"`
+	Gender    string    `json:"gender" example:"Female"`
 	Breed     string    `json:"breed" example:"Lab/Terrier Mix"`
 	Birthday  time.Time `json:"birthday" example:"2019-11-09T21:21:46+00:00"`
 	CreatedAt time.Time `json:"created_at"  example:"2019-11-09T21:21:46+00:00"`
@@ -47,6 +48,7 @@ type petRequest struct {
 	Name     string    `json:"name" example:"Fido"`
 	Type     string    `json:"type" example:"Dog"`
 	Breed    string    `json:"breed" example:"Lab/Terrier Mix"`
+	Gender   string    `json:"gender" example:"Female"`
 	Birthday time.Time `json:"birthday" example:"2019-11-09T21:21:46+00:00"`
 }
 

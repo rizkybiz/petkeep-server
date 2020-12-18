@@ -15,6 +15,7 @@ type Config struct {
 	LogLevel      string
 	StatsdHost    string
 	StatsdPort    string
+	ServerHost    string
 }
 
 //Generate returns a new config from ENV, file, or flags
@@ -31,6 +32,7 @@ func Generate() Config {
 	flag.BoolVar(&cfg.DBInsecure, "api-insecure-database-connection", false, "enable insecure communication between api and cockroachdb")
 	flag.StringVar(&cfg.StatsdHost, "api-statsd-host", "", "hostname or IP address for statsd server")
 	flag.StringVar(&cfg.StatsdPort, "api-statsd-port", "8125", "port for statsd server")
+	flag.StringVar(&cfg.ServerHost, "server-host", "localhost", "hostname to access the server")
 	flag.Parse()
 	return cfg
 }
